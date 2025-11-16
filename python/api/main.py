@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from predict import MentalHealthPredictor
 import uvicorn
+import os
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -27,11 +28,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+CATEGORY_DESCRIPTIONS = {
+    "Anxiety": "ภาวะวิตกกังวล เช่น กังวลมากเกินไป กลัว ตื่นเต้นง่าย",
+    "SuicideWatch": "สัญญาณเสี่ยงต้องเฝ้าระวังการทำร้ายตัวเองหรือต้องการความช่วยเหลือด่วน",
+    "depression": "ภาวะซึมเศร้าหรืออารมณ์ด้านลบที่ทับถมเป็นเวลานาน",
+    "mentalhealth": "โรคจิตเวชหรือภาวะสุขภาพจิตที่ต้องการการดูแล เช่น โรคอารมณ์สองขั้ว โรคจิตเภท BPD หรือความผิดปกติทางจิตอื่นๆ",
+    "wellbeing": "ข้อความเชิงบวกหรือความเป็นอยู่ที่ดี แสดงถึงสุขภาวะที่ดี",
+}
+
 # Initialize predictor (will load model on startup)
+MODEL_DIR = os.getenv("MENTAL_MODEL_DIR")
+if MODEL_DIR:
+    print(f"?o. Using custom model directory: {MODEL_DIR}")
 try:
-    predictor = MentalHealthPredictor()
+    predictor = MentalHealthPredictor(model_dir=MODEL_DIR)
 except Exception as e:
-    print(f"❌ Error loading model: {e}")
+    print(f"??O Error loading model: {e}")
     predictor = None
 
 # Request model
@@ -51,7 +63,8 @@ async def root():
     return {
         "status": "running",
         "message": "Mental Health Prediction API",
-        "model_loaded": predictor is not None
+        "model_loaded": predictor is not None,
+        "categories": CATEGORY_DESCRIPTIONS,
     }
 
 @app.post("/predict", response_model=PredictionResponse)
@@ -78,16 +91,24 @@ async def predict(request: PredictionRequest):
 @app.get("/health")
 async def health():
     """Detailed health check"""
-    available_categories = []
+    available_categories = list(CATEGORY_DESCRIPTIONS.keys())
     if predictor:
         # Get categories from id2label mapping (transformer model)
-        available_categories = list(predictor.id2label.values()) if hasattr(predictor, 'id2label') else []
+        model_categories = list(predictor.id2label.values()) if hasattr(predictor, 'id2label') else []
+        # merge to ensure any new model labels also reported
+        available_categories = sorted(set(available_categories) | set(model_categories))
     
     return {
         "status": "healthy" if predictor is not None else "unhealthy",
         "model_loaded": predictor is not None,
-        "available_categories": available_categories
+        "available_categories": available_categories,
+        "category_details": CATEGORY_DESCRIPTIONS,
     }
+
+@app.get("/categories")
+async def categories():
+    """Return category descriptions for front-end use"""
+    return CATEGORY_DESCRIPTIONS
 
 if __name__ == "__main__":
     # Run server

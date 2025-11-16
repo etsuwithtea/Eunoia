@@ -18,10 +18,14 @@ class MentalHealthPredictor:
         """Initialize predictor by loading transformer model and tokenizer"""
         # Use absolute path if not provided
         if model_dir is None:
+            env_dir = os.getenv("MENTAL_MODEL_DIR")
+            if env_dir:
+                model_dir = env_dir
+        if model_dir is None:
             # Get the directory of this file (api folder)
             current_dir = os.path.dirname(os.path.abspath(__file__))
             # Go up two levels to project root, then into model folder
-            model_dir = os.path.join(os.path.dirname(os.path.dirname(current_dir)), "model", "transformer_distilbert")
+            model_dir = os.path.join(os.path.dirname(os.path.dirname(current_dir)), "model", "transformer_bert_base")
         
         model_path = Path(model_dir)
         label_map_path = model_path / "label_map.json"
@@ -35,8 +39,8 @@ class MentalHealthPredictor:
                     self.id2label = {int(k): v for k, v in self.id2label.items()}
                     self.label2id = {v: int(k) for k, v in self.id2label.items()}
             else:
-                # Fallback to default labels
-                self.id2label = {0: "Anxiety", 1: "SuicideWatch", 2: "depression", 3: "mentalhealth"}
+                # Fallback to default labels (5 classes including wellbeing)
+                self.id2label = {0: "Anxiety", 1: "SuicideWatch", 2: "depression", 3: "mentalhealth", 4: "wellbeing"}
                 self.label2id = {v: k for k, v in self.id2label.items()}
             
             # Load model and tokenizer

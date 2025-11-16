@@ -18,14 +18,31 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 import requests
-from io import StringIO
 
 import kagglehub
+from datasets import load_dataset
 
-LABEL_ORDER = ["Anxiety", "SuicideWatch", "depression", "lonely", "mentalhealth"]
+WELLNESS_LABEL = "wellbeing"
+LABEL_ORDER = ["Anxiety", "SuicideWatch", "depression", "mentalhealth", WELLNESS_LABEL]
 RANDOM_STATE = 42
 DEFAULT_OUTPUT = Path("python") / "data" / "combined_dataset.parquet"
 DEFAULT_STATS = Path("python") / "data" / "combined_dataset_stats.json"
+GOEMOTIONS_POSITIVE = {
+    "admiration",
+    "amusement",
+    "approval",
+    "caring",
+    "contentment",
+    "desire",
+    "excitement",
+    "gratitude",
+    "joy",
+    "love",
+    "optimism",
+    "pride",
+    "relief",
+    "surprise",
+}
 
 
 def log(message: str) -> None:
@@ -128,6 +145,25 @@ def load_solomonk(max_rows_per_file: int) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=["text", "label"])
 
 
+def load_goemotions(max_rows: int) -> pd.DataFrame:
+    log("Loading GoEmotions positive samples…")
+    dataset = load_dataset("go_emotions")
+    label_names = dataset["train"].features["labels"].feature.names
+    splits = [dataset["train"], dataset["validation"], dataset["test"]]
+    df = pd.concat((split.to_pandas()[["text", "labels"]] for split in splits), ignore_index=True)
+
+    def has_positive(label_ids: List[int]) -> bool:
+        return any(label_names[idx] in GOEMOTIONS_POSITIVE for idx in label_ids)
+
+    df = df[df["labels"].apply(has_positive)].copy()
+    df["label"] = WELLNESS_LABEL
+    df = df[["text", "label"]]
+    if max_rows and len(df) > max_rows:
+        df = df.sample(max_rows, random_state=RANDOM_STATE)
+    log(f"  → GoEmotions positive samples: {len(df)}")
+    return df
+
+
 def load_suicide_watch(max_rows: int) -> pd.DataFrame:
     log("Loading SuicideWatch positives…")
     dataset_path = Path(kagglehub.dataset_download("nikhileswarkomati/suicide-watch"))
@@ -180,7 +216,8 @@ def fetch_lonely_from_pushshift(max_posts: int, batch_size: int, enabled: bool) 
     if "title" not in df:
         df["title"] = ""
     df["text"] = combine_text_fields(df)
-    df["label"] = "lonely"
+    # Map lonely to depression since loneliness is often associated with depressive symptoms
+    df["label"] = "depression"
     return df[["text", "label"]]
 
 
@@ -191,6 +228,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-kamaruladha", type=int, default=40000, help="Maximum samples per label to take from kamaruladha dataset.")
     parser.add_argument("--max-solomonk", type=int, default=20000, help="Maximum rows to take per HuggingFace file.")
     parser.add_argument("--max-suicidewatch", type=int, default=60000, help="Maximum SuicideWatch positive rows.")
+    parser.add_argument("--max-goemotions", type=int, default=60000, help="Maximum GoEmotions positive rows to include.")
     parser.add_argument("--lonely-max-posts", type=int, default=12000, help="Maximum posts to fetch from Pushshift r/lonely.")
     parser.add_argument("--lonely-batch-size", type=int, default=250, help="Pushshift batch size.")
     parser.add_argument("--skip-pushshift", action="store_true", help="Skip Pushshift lonely collection.")
@@ -225,6 +263,7 @@ def main() -> None:
         load_original_labelled(),
         load_kamaruladha(args.max_kamaruladha),
         load_solomonk(args.max_solomonk),
+        load_goemotions(args.max_goemotions),
         load_suicide_watch(args.max_suicidewatch),
         fetch_lonely_from_pushshift(args.lonely_max_posts, args.lonely_batch_size, not args.skip_pushshift),
     ]

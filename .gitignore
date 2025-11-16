@@ -40,9 +40,18 @@ pip-delete-this-directory.txt
 .ipynb_checkpoints
 *.ipynb_checkpoints/
 
-# ML Models (optional - uncomment if you don't want to commit models)
-# model/*.pkl
-# model/*.joblib
+# ML Models and Checkpoints (large files should not be in Git)
+model/*.pkl
+model/*.joblib
+model/**/checkpoint-*/
+model/**/*.safetensors
+model/**/*.pt
+model/**/optimizer.pt
+
+# Large datasets
+python/data/*.parquet
+python/data/*.csv
+python copy/
 
 # Environment variables
 .env

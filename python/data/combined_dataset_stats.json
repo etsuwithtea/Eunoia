@@ -1,10 +1,10 @@
 {
-  "total_rows": 227898,
+  "total_rows": 246172,
   "label_counts": {
     "mentalhealth": 74527,
     "SuicideWatch": 59856,
     "depression": 53889,
     "Anxiety": 39580,
-    "lonely": 46
+    "wellbeing": 18320
   }
 }

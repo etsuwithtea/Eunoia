@@ -23,6 +23,7 @@ import torch
 from datasets import Dataset
 from sklearn.metrics import accuracy_score, classification_report, f1_score
 from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_class_weight
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -30,12 +31,13 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
+from torch import nn
 
 # Removed "lonely" due to insufficient data (only 46 samples from failed Pushshift API)
-LABEL_ORDER = ["Anxiety", "SuicideWatch", "depression", "mentalhealth"]
+LABEL_ORDER = ["Anxiety", "SuicideWatch", "depression", "mentalhealth", "wellbeing"]
 DEFAULT_DATA_PATH = Path("python") / "data" / "combined_dataset.parquet"
-DEFAULT_MODEL_DIR = Path("model") / "transformer_distilbert"
-DEFAULT_MODEL_NAME = "distilbert-base-uncased"
+DEFAULT_MODEL_DIR = Path("model") / "transformer_bert_base"
+DEFAULT_MODEL_NAME = "bert-base-uncased"
 RANDOM_STATE = 42
 
 
@@ -65,14 +67,14 @@ def auto_scale_batch_size(model_name: str) -> tuple[int, int, int, int]:
             return 4, 8, 4, 128
     elif "bert-base" in model_name.lower():
         if total_vram_gb >= 10:
-            return 12, 24, 2, 256
+            return 32, 64, 2, 256
         elif total_vram_gb >= 8:
-            return 8, 16, 2, 256
+            return 12, 24, 2, 256
         else:
             return 4, 8, 4, 128
     elif "roberta-large" in model_name.lower() or "bert-large" in model_name.lower():
-        if total_vram_gb >= 10:
-            return 4, 8, 4, 256
+        if total_vram_gb >= 10:  # RTX 4070 Ti 12GB
+            return 8, 16, 2, 256  # ~10-11 GB usage (optimized)
         else:
             return 2, 4, 8, 128
     else:
@@ -110,12 +112,21 @@ def tokenize_function(tokenizer, max_length: int):
 
 def build_datasets(
     df: pd.DataFrame, test_size: float, max_length: int, tokenizer
-) -> Tuple[Dataset, Dataset, Dict[int, str]]:
+) -> Tuple[Dataset, Dataset, Dict[int, str], np.ndarray]:
     label_names = sorted(df["label"].unique().tolist(), key=lambda x: LABEL_ORDER.index(x))
     label2id = {label: idx for idx, label in enumerate(label_names)}
     id2label = {idx: label for label, idx in label2id.items()}
 
     df = df.assign(label_id=df["label"].map(label2id))
+    
+    # Compute class weights to handle imbalance
+    class_weights = compute_class_weight(
+        class_weight='balanced',
+        classes=np.unique(df["label_id"]),
+        y=df["label_id"]
+    )
+    log(f"Class weights: {dict(zip([id2label[i] for i in range(len(class_weights))], class_weights))}")
+    
     train_df, test_df = train_test_split(
         df[["text", "label_id"]],
         test_size=test_size,
@@ -136,7 +147,7 @@ def build_datasets(
     train_dataset = train_dataset.rename_column("label_id", "labels")
     test_dataset = test_dataset.rename_column("label_id", "labels")
 
-    return train_dataset, test_dataset, id2label
+    return train_dataset, test_dataset, id2label, class_weights
 
 
 def parse_args() -> argparse.Namespace:
@@ -155,6 +166,31 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-length", type=int, default=128, help="Maximum token length.")
     parser.add_argument("--resume", action="store_true", help="Resume training from last checkpoint if available.")
     return parser.parse_args()
+
+
+class WeightedTrainer(Trainer):
+    """Custom Trainer that applies class weights to handle imbalanced datasets."""
+    
+    def __init__(self, *args, class_weights=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if class_weights is not None:
+            self.class_weights = torch.tensor(class_weights, dtype=torch.float32).to(self.args.device)
+        else:
+            self.class_weights = None
+    
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        labels = inputs.pop("labels")
+        outputs = model(**inputs)
+        logits = outputs.logits
+        
+        if self.class_weights is not None:
+            loss_fct = nn.CrossEntropyLoss(weight=self.class_weights)
+            loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
+        else:
+            loss_fct = nn.CrossEntropyLoss()
+            loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
+        
+        return (loss, outputs) if return_outputs else loss
 
 
 def main() -> None:
@@ -179,9 +215,14 @@ def main() -> None:
     df = df[df["label"].isin(LABEL_ORDER)]
     df = cap_per_label(df, args.max_per_label)
     log(f"Dataset rows after filtering: {len(df)}")
+    
+    # Log class distribution
+    label_counts = df["label"].value_counts()
+    log(f"Class distribution:\n{label_counts}")
+    
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
 
-    train_dataset, test_dataset, id2label = build_datasets(df, args.test_size, args.max_length, tokenizer)
+    train_dataset, test_dataset, id2label, class_weights = build_datasets(df, args.test_size, args.max_length, tokenizer)
     label2id = {label: idx for idx, label in id2label.items()}
 
     model = AutoModelForSequenceClassification.from_pretrained(
@@ -227,7 +268,7 @@ def main() -> None:
             "macro_f1": f1_score(labels, preds, average="macro"),
         }
 
-    trainer = Trainer(
+    trainer = WeightedTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
@@ -235,6 +276,7 @@ def main() -> None:
         tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
+        class_weights=class_weights,
     )
 
     # Check for existing checkpoints to resume from
