@@ -78,10 +78,15 @@ async def predict(request: PredictionRequest):
 @app.get("/health")
 async def health():
     """Detailed health check"""
+    available_categories = []
+    if predictor:
+        # Get categories from id2label mapping (transformer model)
+        available_categories = list(predictor.id2label.values()) if hasattr(predictor, 'id2label') else []
+    
     return {
         "status": "healthy" if predictor is not None else "unhealthy",
         "model_loaded": predictor is not None,
-        "available_categories": list(predictor.model.classes_) if predictor else []
+        "available_categories": available_categories
     }
 
 if __name__ == "__main__":

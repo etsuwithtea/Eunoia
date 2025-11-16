@@ -30,18 +30,18 @@ export interface ApiError {
 
 // Category labels mapping (Thai translations)
 export const CATEGORY_LABELS: Record<string, string> = {
-  'depression': 'ภาวะซึมเศร้า',
-  'anxiety': 'ภาวะวิตกกังวล',
-  'mentalhealth': 'สุขภาพจิตทั่วไป',
+  'Anxiety': 'ภาวะวิตกกังวล',
   'SuicideWatch': 'ความเสี่ยงสูง - ต้องการความช่วยเหลือเร่งด่วน',
+  'depression': 'ภาวะซึมเศร้า',
+  'mentalhealth': 'สุขภาพจิตทั่วไป',
 };
 
 // Category descriptions
 export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
-  'depression': 'อาจมีอาการของภาวะซึมเศร้า เช่น เศร้า เหนื่อยหน่าย ไม่มีพลัง',
-  'anxiety': 'อาจมีอาการของภาวะวิตกกังวล เช่น กังวลมากเกินไป กลัว ตื่นเต้นง่าย',
-  'mentalhealth': 'เกี่ยวกับสุขภาพจิตโดยทั่วไป อาจต้องการคำปรึกษาหรือการดูแลเบื้องต้น',
+  'Anxiety': 'อาจมีอาการของภาวะวิตกกังวล เช่น กังวลมากเกินไป กลัว ตื่นเต้นง่าย',
   'SuicideWatch': '⚠️ พบสัญญาณเสี่ยงสูง - ขอแนะนำให้ติดต่อผู้เชี่ยวชาญด้านสุขภาพจิตโดยด่วน',
+  'depression': 'อาจมีอาการของภาวะซึมเศร้า เช่น เศร้า เหนื่อยหน่าย ไม่มีพลัง',
+  'mentalhealth': 'เกี่ยวกับสุขภาพจิตโดยทั่วไป อาจต้องการคำปรึกษาหรือการดูแลเบื้องต้น',
 };
 
 // API Client Class

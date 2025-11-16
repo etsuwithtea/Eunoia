@@ -28,7 +28,7 @@ const ResultDisplay = ({ result, onReset }: ResultProps) => {
         bgColor: "bg-orange-50 dark:bg-orange-950/20",
         icon: <AlertTriangle className="w-8 h-8" />,
       },
-      anxiety: {
+      Anxiety: {
         title: "ภาวะวิตกกังวล",
         color: "text-yellow-600",
         bgColor: "bg-yellow-50 dark:bg-yellow-950/20",
@@ -73,7 +73,7 @@ const ResultDisplay = ({ result, onReset }: ResultProps) => {
         "รักษาตารางการนอนให้สม่ำเสมอ นอนหลับ 7-8 ชั่วโมงต่อคืน",
         "พูดคุยกับคนที่ไว้ใจได้ อย่าปิดกั้นความรู้สึก",
       ],
-      anxiety: [
+      Anxiety: [
         "ฝึกเทคนิคการหายใจลึกๆ และการทำสมาธิ",
         "ลดการรับคาเฟอีนและแอลกอฮอล์",
         "ออกกำลังกายสม่ำเสมอเพื่อลดความเครียด",
@@ -87,7 +87,7 @@ const ResultDisplay = ({ result, onReset }: ResultProps) => {
       ],
       SuicideWatch: [
         "⚠️ กรุณาติดต่อสายด่วนสุขภาพจิต 1323 ทันที (24 ชั่วโมง)",
-        "ไปพบจิตแพทย์หรือไปโรงพยาบาลโดยเร็วที่สุด",
+        "ไปพบจิตแพทย์หรือไปโรงพยาบาล โดยเร็วที่สุด",
         "บอกคนใกล้ชิดเกี่ยวกับความรู้สึกของคุณ",
         "อย่าอยู่คนเดียว หาคนที่ไว้ใจอยู่ด้วย",
       ],
