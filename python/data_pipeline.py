@@ -164,6 +164,69 @@ def load_goemotions(max_rows: int) -> pd.DataFrame:
     return df
 
 
+def load_twitter_positive(max_rows: int) -> pd.DataFrame:
+    """Load positive sentiment from tweet_eval sentiment dataset"""
+    log("Loading Twitter positive sentiment samples…")
+    try:
+        dataset = load_dataset("tweet_eval", "sentiment")
+        # Combine all splits
+        frames = []
+        for split_name in ["train", "validation", "test"]:
+            if split_name in dataset:
+                split_df = dataset[split_name].to_pandas()
+                # sentiment: 0=negative, 1=neutral, 2=positive
+                split_df = split_df[split_df["label"] == 2].copy()
+                frames.append(split_df)
+        
+        if not frames:
+            log("  → No positive tweets found")
+            return pd.DataFrame(columns=["text", "label"])
+            
+        df = pd.concat(frames, ignore_index=True)
+        df["label"] = WELLNESS_LABEL
+        df = df[["text", "label"]]
+        
+        if max_rows and len(df) > max_rows:
+            df = df.sample(max_rows, random_state=RANDOM_STATE)
+        log(f"  → Twitter positive samples: {len(df)}")
+        return df
+    except Exception as e:
+        log(f"  → Twitter dataset failed: {e}, skipping")
+        return pd.DataFrame(columns=["text", "label"])
+
+
+def load_positive_reddit(max_rows: int) -> pd.DataFrame:
+    """Load positive samples from emotion dataset"""
+    log("Loading positive emotion samples (joy, love)…")
+    try:
+        dataset = load_dataset("emotion")
+        # Combine all splits
+        frames = []
+        for split_name in ["train", "validation", "test"]:
+            if split_name in dataset:
+                split_df = dataset[split_name].to_pandas()
+                # emotion labels: sadness(0), joy(1), love(2), anger(3), fear(4), surprise(5)
+                # Filter for joy(1) and love(2)
+                split_df = split_df[split_df["label"].isin([1, 2])].copy()
+                frames.append(split_df)
+        
+        if not frames:
+            log("  → No positive emotions found")
+            return pd.DataFrame(columns=["text", "label"])
+            
+        df = pd.concat(frames, ignore_index=True)
+        df["label"] = WELLNESS_LABEL
+        df = df[["text", "label"]]
+        
+        if max_rows and len(df) > max_rows:
+            df = df.sample(max_rows, random_state=RANDOM_STATE)
+        log(f"  → Positive emotion samples (joy/love): {len(df)}")
+        return df
+    except Exception as e:
+        log(f"  → Emotion dataset failed: {e}, skipping")
+        return pd.DataFrame(columns=["text", "label"])
+
+
 def load_suicide_watch(max_rows: int) -> pd.DataFrame:
     log("Loading SuicideWatch positives…")
     dataset_path = Path(kagglehub.dataset_download("nikhileswarkomati/suicide-watch"))
@@ -228,7 +291,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-kamaruladha", type=int, default=40000, help="Maximum samples per label to take from kamaruladha dataset.")
     parser.add_argument("--max-solomonk", type=int, default=20000, help="Maximum rows to take per HuggingFace file.")
     parser.add_argument("--max-suicidewatch", type=int, default=60000, help="Maximum SuicideWatch positive rows.")
-    parser.add_argument("--max-goemotions", type=int, default=60000, help="Maximum GoEmotions positive rows to include.")
+    parser.add_argument("--max-goemotions", type=int, default=120000, help="Maximum GoEmotions positive rows to include.")
+    parser.add_argument("--max-twitter-positive", type=int, default=40000, help="Maximum Twitter positive sentiment rows.")
+    parser.add_argument("--max-reddit-positive", type=int, default=30000, help="Maximum positive Reddit samples from happy/motivational subreddits.")
     parser.add_argument("--lonely-max-posts", type=int, default=12000, help="Maximum posts to fetch from Pushshift r/lonely.")
     parser.add_argument("--lonely-batch-size", type=int, default=250, help="Pushshift batch size.")
     parser.add_argument("--skip-pushshift", action="store_true", help="Skip Pushshift lonely collection.")
@@ -264,6 +329,8 @@ def main() -> None:
         load_kamaruladha(args.max_kamaruladha),
         load_solomonk(args.max_solomonk),
         load_goemotions(args.max_goemotions),
+        load_twitter_positive(args.max_twitter_positive),
+        load_positive_reddit(args.max_reddit_positive),
         load_suicide_watch(args.max_suicidewatch),
         fetch_lonely_from_pushshift(args.lonely_max_posts, args.lonely_batch_size, not args.skip_pushshift),
     ]

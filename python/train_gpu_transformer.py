@@ -173,15 +173,22 @@ class WeightedTrainer(Trainer):
     
     def __init__(self, *args, class_weights=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.class_weights = None
         if class_weights is not None:
-            self.class_weights = torch.tensor(class_weights, dtype=torch.float32).to(self.args.device)
+            # Defer weight tensor creation until we know the device
+            self._class_weights_array = class_weights
         else:
-            self.class_weights = None
+            self._class_weights_array = None
     
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         labels = inputs.pop("labels")
         outputs = model(**inputs)
         logits = outputs.logits
+        
+        # Initialize class_weights tensor on first use when device is known
+        if self.class_weights is None and self._class_weights_array is not None:
+            device = logits.device
+            self.class_weights = torch.tensor(self._class_weights_array, dtype=torch.float32).to(device)
         
         if self.class_weights is not None:
             loss_fct = nn.CrossEntropyLoss(weight=self.class_weights)
@@ -232,10 +239,16 @@ def main() -> None:
         label2id=label2id,
     )
 
+    # Check and configure GPU
     if torch.cuda.is_available():
+        device = torch.device("cuda")
         log(f"Using GPU: {torch.cuda.get_device_name(0)}")
+        log(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / (1024**3):.1f} GB")
+        # Move model to GPU explicitly
+        model = model.to(device)
     else:
-        log("GPU not detected; training will run on CPU (slower).")
+        device = torch.device("cpu")
+        log("⚠️ GPU not detected; training will run on CPU (much slower).")
 
     training_args = TrainingArguments(
         output_dir=str(args.output_dir),
@@ -256,6 +269,8 @@ def main() -> None:
         fp16=torch.cuda.is_available(),
         auto_find_batch_size=True,  # Auto-reduce batch size if OOM
         save_safetensors=True,  # Use safetensors format
+        use_cpu=False,  # Force GPU usage
+        no_cuda=False,  # Ensure CUDA is enabled
     )
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
@@ -281,17 +296,22 @@ def main() -> None:
 
     # Check for existing checkpoints to resume from
     resume_from_checkpoint = None
-    if args.resume or args.output_dir.exists():
+    if args.resume and args.output_dir.exists():
         checkpoints = list(args.output_dir.glob("checkpoint-*"))
         if checkpoints:
             # Sort by modification time and get the latest
             latest_checkpoint = max(checkpoints, key=lambda p: p.stat().st_mtime)
             resume_from_checkpoint = str(latest_checkpoint)
             log(f"Found checkpoint: {latest_checkpoint.name}. Resuming training...")
-        elif args.resume:
+        else:
             log("No checkpoint found. Starting training from scratch.")
     
-    trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+    try:
+        trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+    except Exception as e:
+        log(f"Error during training with checkpoint resume: {e}")
+        log("Retrying training from scratch...")
+        trainer.train()
     metrics = trainer.evaluate()
     log(f"Evaluation metrics: {metrics}")
 
