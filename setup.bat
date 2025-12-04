@@ -57,14 +57,20 @@ echo       OK
 
 echo [5/6] Installing Python packages...
 echo       This may take a few minutes...
-.venv\Scripts\python.exe -m pip install --upgrade pip --quiet
-.venv\Scripts\python.exe -m pip install -r python\requirements.txt --quiet
+.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel --quiet
+.venv\Scripts\python.exe -m pip install -r python\requirements.txt --only-binary=:all: --quiet
 if %errorlevel% neq 0 (
-    echo [ERROR] Failed to install Python packages!
-    echo.
-    echo Press any key to exit...
-    pause >nul
-    exit /b 1
+    echo       Retrying without binary-only constraint...
+    .venv\Scripts\python.exe -m pip install -r python\requirements.txt --quiet
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install Python packages!
+        echo        You may need to install Visual C++ Build Tools:
+        echo        https://visualstudio.microsoft.com/visual-cpp-build-tools/
+        echo.
+        echo Press any key to exit...
+        pause >nul
+        exit /b 1
+    )
 )
 echo       OK
 
