@@ -64,21 +64,25 @@ source "$VENV_PATH/bin/activate"
 echo "Using Python: $(which python)"
 
 echo "Upgrading pip..."
-python -m pip install --upgrade pip
+python -m pip install --upgrade pip --quiet
 
 echo "Installing Python packages..."
-python -m pip install -r python/requirements.txt
+python -m pip install -r python/requirements.txt --quiet
 echo "Python dependencies installed."
 echo
 
 # --- Frontend deps ---
-echo "Installing frontend dependencies (npm ci)..."
-npm ci
+echo "Installing frontend dependencies..."
+if [[ -f "package-lock.json" ]]; then
+  npm ci
+else
+  npm install
+fi
 echo "Frontend dependencies installed."
 echo
 
 # --- Env file ---
-if [[ ! -f ".env" ]]; then
+if [[ ! -f ".env" && -f ".env.example" ]]; then
   echo "Creating .env from .env.example ..."
   cp .env.example .env
 fi
