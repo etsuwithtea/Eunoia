@@ -46,13 +46,19 @@ def log(message: str) -> None:
 
 
 def auto_scale_batch_size(model_name: str) -> tuple[int, int, int, int]:
-    """Auto-scale batch size based on available GPU VRAM."""
+    """Auto-scale batch size based on available GPU VRAM or CPU."""
     if not torch.cuda.is_available():
-        log("No GPU detected, using conservative CPU settings")
+        log("⚠️ No GPU detected, using conservative CPU settings")
+        log("CPU training will be significantly slower than GPU")
         return 2, 4, 8, 128
     
-    total_vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-    log(f"Detected {total_vram_gb:.1f} GB GPU VRAM")
+    try:
+        total_vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+        log(f"Detected {total_vram_gb:.1f} GB GPU VRAM")
+    except Exception as e:
+        log(f"⚠️ Error detecting GPU properties: {e}")
+        log("Falling back to CPU settings")
+        return 2, 4, 8, 128
     
     # Heuristics based on model size and VRAM
     # Format: (train_batch, eval_batch, grad_accum, max_length)
@@ -239,16 +245,27 @@ def main() -> None:
         label2id=label2id,
     )
 
-    # Check and configure GPU
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-        log(f"Using GPU: {torch.cuda.get_device_name(0)}")
-        log(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / (1024**3):.1f} GB")
-        # Move model to GPU explicitly
-        model = model.to(device)
+    # Check and configure GPU/CPU
+    use_cuda = torch.cuda.is_available()
+    
+    if use_cuda:
+        try:
+            device = torch.device("cuda")
+            log(f"✓ Using GPU: {torch.cuda.get_device_name(0)}")
+            log(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / (1024**3):.1f} GB")
+            # Move model to GPU explicitly
+            model = model.to(device)
+        except Exception as e:
+            log(f"⚠️ Error initializing GPU: {e}")
+            log("Falling back to CPU")
+            use_cuda = False
+            device = torch.device("cpu")
+            model = model.to(device)
     else:
         device = torch.device("cpu")
-        log("⚠️ GPU not detected; training will run on CPU (much slower).")
+        log("⚠️ GPU not available; training will run on CPU (much slower)")
+        log("To use GPU, install PyTorch with CUDA support: pip install torch --index-url https://download.pytorch.org/whl/cu118")
+        model = model.to(device)
 
     training_args = TrainingArguments(
         output_dir=str(args.output_dir),
@@ -266,11 +283,10 @@ def main() -> None:
         load_best_model_at_end=True,
         metric_for_best_model="accuracy",
         report_to="none",
-        fp16=torch.cuda.is_available(),
+        fp16=use_cuda,  # Only use fp16 if CUDA is available
         auto_find_batch_size=True,  # Auto-reduce batch size if OOM
         save_safetensors=True,  # Use safetensors format
-        use_cpu=False,  # Force GPU usage
-        no_cuda=False,  # Ensure CUDA is enabled
+        no_cuda=not use_cuda,  # Use CPU if CUDA not available
     )
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
