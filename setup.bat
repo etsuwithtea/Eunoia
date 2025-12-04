@@ -100,6 +100,13 @@ echo   Setup complete!
 echo.
 echo   Frontend:  npm run dev
 echo   Backend:   .venv\Scripts\python.exe python\api\main.py
+echo.
+echo   ** IMPORTANT: Always use .venv\Scripts\python.exe **
+echo   ** NOT just 'python' directly! **
+echo.
+echo   Examples:
+echo     .venv\Scripts\python.exe python\data_pipeline.py
+echo     .venv\Scripts\python.exe python\train_gpu_transformer.py
 echo ========================================
 echo.
 echo Press any key to exit...
