@@ -57,11 +57,13 @@ echo       OK
 
 echo [5/6] Installing Python packages...
 echo       This may take a few minutes...
-.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel --quiet
-.venv\Scripts\python.exe -m pip install -r python\requirements.txt --only-binary=:all: --quiet
+echo.
+.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
+.venv\Scripts\python.exe -m pip install -r python\requirements.txt --only-binary=:all:
 if %errorlevel% neq 0 (
+    echo.
     echo       Retrying without binary-only constraint...
-    .venv\Scripts\python.exe -m pip install -r python\requirements.txt --quiet
+    .venv\Scripts\python.exe -m pip install -r python\requirements.txt
     if %errorlevel% neq 0 (
         echo [ERROR] Failed to install Python packages!
         echo        You may need to install Visual C++ Build Tools:
@@ -74,12 +76,14 @@ if %errorlevel% neq 0 (
 )
 echo       OK
 
+echo.
 echo [6/6] Installing frontend packages...
 echo       This may take a few minutes...
+echo.
 if exist "package-lock.json" (
-    call npm ci --silent
+    call npm ci
 ) else (
-    call npm install --silent
+    call npm install
 )
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to install npm packages!
