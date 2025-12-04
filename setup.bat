@@ -42,6 +42,46 @@ if %errorlevel% neq 0 (
 )
 echo       OK
 
+echo [3.5/6] Checking Visual C++ Redistributable...
+if not exist "%SystemRoot%\System32\vcruntime140.dll" (
+    echo       Not found! Downloading...
+    echo.
+    
+    curl -L -o "%TEMP%\vc_redist.x64.exe" "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to download Visual C++ Redistributable!
+        echo        Please download manually from:
+        echo        https://aka.ms/vs/17/release/vc_redist.x64.exe
+        echo.
+        echo Press any key to exit...
+        pause >nul
+        exit /b 1
+    )
+    
+    echo       Installing Visual C++ Redistributable...
+    echo       (You may see a UAC prompt - please click Yes)
+    echo.
+    "%TEMP%\vc_redist.x64.exe" /install /quiet /norestart
+    if %errorlevel% neq 0 (
+        echo       Silent install failed, trying interactive install...
+        "%TEMP%\vc_redist.x64.exe" /install
+    )
+    
+    del "%TEMP%\vc_redist.x64.exe" >nul 2>nul
+    
+    if not exist "%SystemRoot%\System32\vcruntime140.dll" (
+        echo [ERROR] Installation may have failed.
+        echo        Please restart this script after installation completes.
+        echo.
+        echo Press any key to exit...
+        pause >nul
+        exit /b 1
+    )
+    echo       Installed successfully!
+) else (
+    echo       OK
+)
+
 echo [4/6] Creating virtual environment...
 if not exist ".venv\Scripts\python.exe" (
     python -m venv .venv
