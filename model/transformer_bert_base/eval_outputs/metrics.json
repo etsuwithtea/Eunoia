@@ -1,0 +1,8 @@
+{
+  "summary": {
+    "macro_f1": 0.8466964439794363,
+    "macro_roc_auc": 0.9720648783112182,
+    "accuracy": 0.8446068805004
+  },
+  "classification_report": "              precision    recall  f1-score   support\n\n     Anxiety      0.782     0.834     0.807      7916\nSuicideWatch      0.884     0.924     0.904     11971\n  depression      0.728     0.727     0.727     10778\nmentalhealth      0.846     0.780     0.812     14906\n   wellbeing      0.978     0.989     0.983      9425\n\n    accuracy                          0.845     54996\n   macro avg      0.844     0.851     0.847     54996\nweighted avg      0.845     0.845     0.844     54996\n"
+}

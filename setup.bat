@@ -1,99 +1,126 @@
 @echo off
+setlocal ENABLEDELAYEDEXPANSION
+title Eunoia - First Time Setup
+
 echo ========================================
-echo   Complete Setup Script
-echo   Mental Health Assessment System
+echo   Eunoia - First Time Setup (Windows)
 echo ========================================
 echo.
 
-REM Step 1: Check Node.js
-echo [Step 1/4] Checking Node.js installation...
-node --version >nul 2>&1
+REM Ensure we run from repo root
+pushd "%~dp0"
+
+REM --- Check Node.js ---
+echo Checking Node.js...
+node -v >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: Node.js is not installed!
-    echo Please install Node.js from: https://nodejs.org/
-    pause
-    exit /b 1
+    echo [ERROR] Node.js not found. Install Node.js 18+ from https://nodejs.org/
+    goto :end_fail
 )
-node --version
-echo Node.js found!
+for /f "delims=" %%v in ('node -v') do set "NODE_VER=%%v"
+set "NODE_VER=!NODE_VER:v=!"
+for /f "tokens=1 delims=." %%m in ("!NODE_VER!") do set "NODE_MAJOR=%%m"
+if "!NODE_MAJOR!"=="" set "NODE_MAJOR=0"
+if !NODE_MAJOR! LSS 18 (
+    echo [ERROR] Node.js 18+ required. Detected: v!NODE_VER!
+    goto :end_fail
+)
+echo   Found Node.js v!NODE_VER!
 echo.
 
-REM Step 2: Check Python
-echo [Step 2/4] Checking Python installation...
+REM --- Check npm ---
+echo Checking npm...
+npm -v >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] npm not found. It ships with Node.js. Please reinstall Node.js.
+    goto :end_fail
+)
+for /f "delims=" %%v in ('npm -v') do set "NPM_VER=%%v"
+echo   Found npm v!NPM_VER!
+echo.
+
+REM --- Check Python ---
+echo Checking Python...
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: Python is not installed!
-    echo Please install Python 3.8+ from: https://www.python.org/
-    pause
-    exit /b 1
+    echo [ERROR] Python not found. Install Python 3.10+ from https://www.python.org/downloads/
+    goto :end_fail
 )
-python --version
-echo Python found!
+for /f "tokens=2" %%v in ('python -V 2^>^&1') do set "PY_VER=%%v"
+for /f "tokens=1,2 delims=." %%a in ("!PY_VER!") do (
+    set "PY_MAJ=%%a"
+    set "PY_MIN=%%b"
+)
+if "!PY_MAJ!"=="" set "PY_MAJ=0"
+if "!PY_MIN!"=="" set "PY_MIN=0"
+if !PY_MAJ! LSS 3 (
+    echo [ERROR] Python 3.10+ required. Detected: !PY_VER!
+    goto :end_fail
+) else if !PY_MAJ! EQU 3 if !PY_MIN! LSS 10 (
+    echo [ERROR] Python 3.10+ required. Detected: !PY_VER!
+    goto :end_fail
+)
+echo   Found Python !PY_VER!
 echo.
 
-REM Step 3: Install Frontend Dependencies
-echo [Step 3/4] Installing Frontend dependencies...
-if not exist "node_modules" (
-    echo Installing npm packages...
-    call npm install
+REM --- Create virtual environment (if missing) ---
+set "VENV_PATH=.venv"
+if not exist "!VENV_PATH!\Scripts\python.exe" (
+    echo Creating virtual environment at !VENV_PATH! ...
+    python -m venv "!VENV_PATH!"
     if errorlevel 1 (
-        echo ERROR: Failed to install frontend dependencies
-        pause
-        exit /b 1
+        echo [ERROR] Failed to create virtual environment.
+        goto :end_fail
     )
-    echo Frontend dependencies installed!
-) else (
-    echo node_modules already exists, skipping...
 )
+set "PY_CMD=!VENV_PATH!\Scripts\python.exe"
+echo Using interpreter: !PY_CMD!
 echo.
 
-REM Step 4: Install Python Dependencies
-echo [Step 4/4] Installing Python dependencies...
-cd python\api
-pip install -r requirements.txt >nul 2>&1
+REM --- Install Python dependencies ---
+echo Upgrading pip...
+"!PY_CMD!" -m pip install --upgrade pip
 if errorlevel 1 (
-    echo Installing Python packages... (this may take a while)
-    pip install -r requirements.txt
-    if errorlevel 1 (
-        echo ERROR: Failed to install Python dependencies
-        cd ..\..
-        pause
-        exit /b 1
-    )
+    echo [ERROR] Failed to upgrade pip.
+    goto :end_fail
 )
-cd ..\..
-echo Python dependencies installed!
+
+echo Installing Python packages...
+"!PY_CMD!" -m pip install -r python\requirements.txt
+if errorlevel 1 (
+    echo [ERROR] Failed to install Python dependencies.
+    goto :end_fail
+)
+echo Python dependencies installed.
 echo.
 
-REM Create .env if it doesn't exist
+REM --- Install frontend dependencies ---
+echo Installing frontend dependencies (npm ci)...
+npm ci
+if errorlevel 1 (
+    echo [ERROR] npm install failed.
+    goto :end_fail
+)
+echo Frontend dependencies installed.
+echo.
+
+REM --- Bootstrap env file ---
 if not exist ".env" (
-    if exist ".env.example" (
-        echo Creating .env file...
-        copy .env.example .env >nul
-        echo .env file created!
-    )
+    echo Creating .env from .env.example ...
+    copy /Y ".env.example" ".env" >nul
 )
-echo.
 
 echo ========================================
-echo   Setup Complete!
+echo   Setup complete!
+echo   Frontend: npm run dev
+echo   Backend : "!PY_CMD!" python\api\main.py
 echo ========================================
 echo.
-echo Next steps:
+popd
+goto :eof
+
+:end_fail
 echo.
-echo 1. Train the ML model:
-echo    - Open: python/kaggel-dataset-first-dataset.ipynb
-echo    - Run all cells in the notebook
-echo    - Wait for model files to be saved
-echo.
-echo 2. Start the application:
-echo    - Double-click: start-all.bat
-echo    - Or run separately:
-echo      * start-backend.bat (API server)
-echo      * start-frontend.bat (Web app)
-echo.
-echo 3. Access the application:
-echo    - Frontend: http://localhost:5173
-echo    - API Docs: http://localhost:8000/docs
-echo.
-pause
+echo Setup aborted due to errors above.
+popd
+exit /b 1
