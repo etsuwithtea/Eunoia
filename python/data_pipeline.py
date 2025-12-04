@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 """
-Download and merge all Reddit mental-health datasets into a single cleaned file.
-
-This script isolates the slow, network-heavy phase (Kaggle, HuggingFace, Pushshift)
-so it can be executed separately from model training. The combined dataset is saved
-locally and later consumed by the GPU training script.
+ดาวน์โหลดและรวมชุดข้อมูล Reddit mental-health ทั้งหมดไว้ในไฟล์เดียว จากนั้นก็ cleaned file.
 """
 
 from __future__ import annotations
