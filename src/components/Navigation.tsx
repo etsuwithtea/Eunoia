@@ -21,7 +21,7 @@ const Navigation = () => {
               <Brain className="w-6 h-6 text-white" />
             </div>
             <span className="font-semibold text-foreground hidden sm:inline">
-              Mental Health AI
+              Eunoia
             </span>
           </button>
 

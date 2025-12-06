@@ -18,7 +18,7 @@ const About = () => {
             เกี่ยวกับโครงงาน
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            ระบบวิเคราะห์สุขภาพจิตด้วย Deep Learning และ NLP
+            ระบบวิเคราะห์สุขภาพจิตด้วย BERT และ NLP
           </p>
         </div>
 
@@ -28,7 +28,7 @@ const About = () => {
             ภาพรวมโครงงาน
           </h2>
           <p className="text-foreground leading-relaxed mb-4">
-            โครงงานนี้มีวัตถุประสงค์เพื่อพัฒนาโมเดล Deep Learning
+            โครงงานนี้มีวัตถุประสงค์เพื่อพัฒนาโมเดล BERT (Bidirectional Encoder Representations from Transformers)
             ด้านประมวลผลภาษาธรรมชาติ (NLP)
             สำหรับการจำแนกภาวะสุขภาพจิตของผู้ใช้จากข้อความ
             โดยใช้ข้อมูลจากชุดข้อมูล Reddit Mental Health Dataset
@@ -51,12 +51,12 @@ const About = () => {
           <TechCard
             icon={<Cpu className="w-6 h-6" />}
             title="เทคโนโลยี"
-            description="Deep Learning และ NLP พร้อมเทคนิค TF-IDF สำหรับการแปลงข้อความเป็นเวกเตอร์"
+            description="BERT Transformer Architecture สำหรับความเข้าใจบริบทของข้อความแบบสองทิศทาง"
           />
           <TechCard
             icon={<Target className="w-6 h-6" />}
             title="โมเดล"
-            description="Logistic Regression และ Deep Learning Models ที่ผ่านการฝึกและปรับแต่งอย่างละเอียด"
+            description="BERT Model ที่ผ่านการ Fine-tuning อย่างละเอียดสำหรับงานจำแนกภาวะสุขภาพจิต"
           />
           <TechCard
             icon={<Shield className="w-6 h-6" />}
@@ -98,7 +98,7 @@ const About = () => {
           </h2>
           <ul className="space-y-3">
             {[
-              "พัฒนาโมเดล Deep Learning ที่มีความแม่นยำสูงในการจำแนกภาวะสุขภาพจิต",
+              "พัฒนาโมเดล BERT ที่มีความแม่นยำสูงในการจำแนกภาวะสุขภาพจิต",
               "สร้างระบบที่สามารถวิเคราะห์และแสดงผลแบบเรียลไทม์",
               "ช่วยสนับสนุนการคัดกรองเบื้องต้นสำหรับผู้มีความเสี่ยงด้านสุขภาพจิต",
               "ให้ข้อมูลและคำแนะนำที่เป็นประโยชน์แก่ผู้ใช้",

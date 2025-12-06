@@ -44,18 +44,36 @@ AI-powered mental health assessment tool ที่ใช้ BERT Transformer ใ
 - pip (Python package manager)
 - (Optional) NVIDIA GPU with CUDA for faster training/inference
 
-### Quick Start (Windows)
+### Quick Start
+
+#### Windows
 
 ```powershell
-# Setup ทั้งหมดด้วยคำสั่งเดียว
+# Setup library ทั้งหมดด้วยคำสั่งเดียว
 setup.bat
 ```
 
 Script นี้จะ:
 - ตรวจสอบ Node.js และ Python
-- ติดตั้ง dependencies ทั้งหมด (npm + pip)
-- สร้าง .env file
-- แสดงขั้นตอนถัดไป
+- ตรวจสอบและติดตั้ง Visual C++ Redistributable (จำเป็นสำหรับ PyTorch)
+- สร้าง Python virtual environment
+- Upgrade pip, setuptools, wheel
+- ติดตั้ง dependencies ทั้งหมด (Python + Frontend)
+- แสดงวิธีใช้งาน
+
+#### macOS / Linux
+
+```bash
+# Setup library ทั้งหมดด้วยคำสั่งเดียว
+chmod +x setup.sh
+./setup.sh
+```
+
+Script นี้จะ:
+- ตรวจสอบ Node.js 18+ และ Python 3.10+
+- สร้าง Python virtual environment
+- ติดตั้ง dependencies ทั้งหมด (Python + Frontend)
+- สร้าง .env file (ถ้ายังไม่มี)
 
 ### Manual Setup
 
@@ -77,25 +95,41 @@ npm install
 
 ```bash
 python -m venv .venv
+```
 
-# Windows
+เปิดใช้งาน virtual environment:
+
+```bash
+# Windows - วิธีที่ 1 (แนะนำ)
+activate.bat
+
+# Windows - วิธีที่ 2
 .venv\Scripts\activate
 
 # Linux/Mac
 source .venv/bin/activate
 ```
 
+**หมายเหตุ (Windows):** ใช้ `activate.bat` จะเปิด virtual environment ให้อัตโนมัติและพร้อมใช้งาน
+
 4. ติดตั้ง Python dependencies
 
-```bash
-# Training dependencies
-pip install -r python/requirements.txt
+**สำคัญ (Windows):** ต้องมี [Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe) สำหรับ PyTorch
+(setup.bat จะติดตั้งให้อัตโนมัติ แต่ถ้า manual setup ต้องติดตั้งเอง)
 
-# API dependencies
-pip install -r python/api/requirements.txt
+```bash
+# Upgrade pip และ build tools ก่อน
+pip install --upgrade pip setuptools wheel
+
+# ติดตั้ง Python dependencies (รวม training + API)
+pip install -r python/requirements.txt
 ```
 
-5. Train ML Model (ถ้ายังไม่มี model)
+**หมายเหตุ:**
+- ไฟล์ `python/requirements.txt` จะรวม API dependencies ด้วยแล้ว (ใช้ `-r api/requirements.txt`)
+- บน Windows ถ้าติดตั้งไม่สำเร็จ อาจต้องติดตั้งตัว [Visual C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+
+5. Train ML Model (ถ้ายังไม่มี model โหลด Raw Data ที่ python\data_pipeline.py)
 
 ```bash
 cd python
@@ -103,15 +137,22 @@ python train_gpu_transformer.py --data-path data/combined_dataset.parquet
 ```
 
 หมายเหตุ:
-- ถ้าไม่มี GPU จะใช้ CPU อัตโนมัติ (ช้ากว่า)
+- ถ้าไม่มี GPU จะใช้ CPU อัตโนมัติ (แต่จะช้ากว่ามากๆ)
 - ต้องมี dataset file ก่อน (run `python data_pipeline.py` ถ้ายังไม่มี)
 
 6. รัน Backend API
 
 ```bash
-cd python/api
-python main.py
+# Windows (แนะนำ - ใช้ python ใน virtual environment)
+.venv\Scripts\python.exe python\api\main.py
+
+# Linux/Mac (หลัง activate virtual environment)
+python python/api/main.py
 ```
+
+**หมายเหตุ (Windows):**
+- ต้องใช้ `.venv\Scripts\python.exe` เพื่อให้แน่ใจว่าใช้ Python ใน virtual environment
+- หรือใช้ `activate.bat` ก่อน แล้วค่อยรัน `python python\api\main.py`
 
 Backend จะรันที่: http://localhost:8000
 
@@ -199,11 +240,20 @@ API Documentation (Swagger): http://localhost:8000/docs
 
 ## Environment Variables
 
-สร้างไฟล์ `.env` จาก `.env.example`:
+สร้างไฟล์ `.env` จาก `.env.example` (ถ้ายังไม่มี):
 
 ```bash
+# Windows (CMD)
+copy .env.example .env
+
+# Windows (PowerShell)
+Copy-Item .env.example .env
+
+# Linux/Mac
 cp .env.example .env
 ```
+
+**หมายเหตุ:** `setup.bat` และ `setup.sh` จะสร้าง `.env` ให้อัตโนมัติแล้ว
 
 ตัวแปรที่ใช้:
 - `MENTAL_MODEL_DIR` - path ไปยัง model directory (optional)
@@ -240,21 +290,23 @@ Options:
 - ถ้ามี NVIDIA GPU + CUDA: จะใช้ GPU อัตโนมัติ
 - ถ้าไม่มี GPU: จะ fallback ไปใช้ CPU อัตโนมัติ (ช้ากว่าแต่ใช้งานได้)
 
-ติดตั้ง PyTorch with CUDA:
+### ติดตั้ง PyTorch with CUDA (Optional - สำหรับ GPU)
+
+ถ้าต้องการติดตั้ง PyTorch แบบระบุ CUDA version เอง:
+
 ```bash
+# CUDA 12.1 (แนะนำสำหรับ GPU ใหม่)
+pip install torch --index-url https://download.pytorch.org/whl/cu121
+
+# CUDA 11.8 (สำหรับ GPU รุ่นเก่า)
 pip install torch --index-url https://download.pytorch.org/whl/cu118
+
+# CPU only (ไม่มี GPU)
+pip install torch --index-url https://download.pytorch.org/whl/cpu
 ```
 
----
+ตรวจสอบ CUDA version ที่รองรับ: https://pytorch.org/get-started/locally/
 
-## Disclaimer
 
-ระบบนี้เป็นเพียงเครื่องมือช่วยประเมินเบื้องต้นเท่านั้น ไม่ควรใช้แทนการวินิจฉัยทางการแพทย์
-
-หากคุณหรือคนที่คุณรู้จักมีปัญหาด้านสุขภาพจิต กรุณาติดต่อ:
-- สายด่วนสุขภาพจิต: 1323 (24 ชั่วโมง)
-- โรงพยาบาล: ปรึกษาจิตแพทย์หรือนักจิตวิทยา
-
----
 
 

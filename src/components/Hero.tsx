@@ -24,8 +24,8 @@ const Hero = () => {
 
         {/* Description */}
         <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-          วิเคราะห์และประเมินภาวะสุขภาพจิตของคุณผ่านข้อความ 
-          ด้วยเทคโนโลยี Deep Learning และ NLP 
+          วิเคราะห์และประเมินภาวะสุขภาพจิตของคุณผ่านข้อความ
+          ด้วยเทคโนโลยี BERT และ NLP
           ที่พัฒนาจากข้อมูลจริง เพื่อการดูแลสุขภาพจิตที่ดีขึ้น
         </p>
 
@@ -54,7 +54,7 @@ const Hero = () => {
           <FeatureCard
             icon={<Brain className="w-6 h-6" />}
             title="AI-Powered"
-            description="วิเคราะห์ด้วย Deep Learning Model ที่ผ่านการฝึกฝนจากข้อมูลจริง"
+            description="วิเคราะห์ด้วย BERT Model ที่ผ่านการฝึกฝนจากข้อมูลจริง"
           />
           <FeatureCard
             icon={<Activity className="w-6 h-6" />}
